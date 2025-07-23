@@ -48,18 +48,44 @@ final class WindowPicker: NSWindow {
         // Self-retain to prevent deallocation
         overlay.selfRetain = overlay
         
-        // Set up global escape key monitoring
-        overlay.keyEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+        // Set up dual key monitoring for maximum reliability
+        let globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+            print("🔍 Global key event - keyCode: \(event.keyCode)")
             if event.keyCode == 53 { // Escape key
                 print("⎋ Global escape detected - canceling picker")
                 overlay.handleEscapeKey()
             }
         }
         
+        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            print("🔍 Local key event - keyCode: \(event.keyCode)")
+            if event.keyCode == 53 { // Escape key
+                print("⎋ Local escape detected - canceling picker")
+                overlay.handleEscapeKey()
+                return nil // Don't pass the event along
+            }
+            return event
+        }
+        
+        overlay.keyEventMonitor = globalMonitor
+        
+        // Store both monitors for cleanup
+        if let global = globalMonitor, let local = localMonitor {
+            overlay.keyEventMonitor = [global, local] as Any
+        }
+        
         print("🖼️ Created overlay window: \(allFrame)")
         overlay.makeKeyAndOrderFront(nil)
-        overlay.becomeKey()
-        overlay.makeFirstResponder(hv)
+        
+        // Ensure proper focus and key handling
+        DispatchQueue.main.async {
+            overlay.becomeKey()
+            overlay.makeFirstResponder(hv)
+            
+            // Force app activation to ensure key events are received
+            NSApp.activate(ignoringOtherApps: true)
+            print("🎯 Overlay window activated and made key")
+        }
     }
     
     private static func getCurrentlyFocusedWindowID() -> CGWindowID? {
@@ -98,7 +124,12 @@ final class WindowPicker: NSWindow {
         let handler = completion
         completion = { _ in }
         
-        if let monitor = keyEventMonitor {
+        if let monitors = keyEventMonitor as? [Any] {
+            for monitor in monitors {
+                NSEvent.removeMonitor(monitor)
+            }
+            keyEventMonitor = nil
+        } else if let monitor = keyEventMonitor {
             NSEvent.removeMonitor(monitor)
             keyEventMonitor = nil
         }
@@ -119,12 +150,6 @@ final class WindowPicker: NSWindow {
         let loc = NSEvent.mouseLocation
         currentWinID = 0
         
-        // Convert mouse location for debug cursor
-        let debugCursorInView = CGPoint(
-            x: loc.x - frame.minX,
-            y: loc.y - frame.minY
-        )
-        highlightView.debugCursorPos = debugCursorInView
         
         // Find window under cursor
         let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
@@ -183,7 +208,12 @@ final class WindowPicker: NSWindow {
         let handler = completion
         completion = { _ in }
         
-        if let monitor = keyEventMonitor {
+        if let monitors = keyEventMonitor as? [Any] {
+            for monitor in monitors {
+                NSEvent.removeMonitor(monitor)
+            }
+            keyEventMonitor = nil
+        } else if let monitor = keyEventMonitor {
             NSEvent.removeMonitor(monitor)
             keyEventMonitor = nil
         }
@@ -217,7 +247,6 @@ final class WindowPicker: NSWindow {
 
 final class HighlightView: NSView {
     var hoverRect: CGRect = .zero { didSet { needsDisplay = true } }
-    var debugCursorPos: CGPoint = .zero { didSet { needsDisplay = true } }
     
     override func draw(_ dirtyRect: NSRect) {
         // Draw window highlight
@@ -227,17 +256,6 @@ final class HighlightView: NSView {
             path.lineWidth = 2
             path.stroke()
         }
-        
-        // Draw debug cursor
-        NSColor.systemBlue.set()
-        let cursorRect = CGRect(
-            x: debugCursorPos.x - 5,
-            y: debugCursorPos.y - 5,
-            width: 10,
-            height: 10
-        )
-        let cursorPath = NSBezierPath(ovalIn: cursorRect)
-        cursorPath.fill()
     }
     
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
