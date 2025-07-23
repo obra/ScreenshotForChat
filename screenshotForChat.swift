@@ -118,25 +118,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .appendingPathComponent("screenshot-\(UUID().uuidString)")
             .appendingPathExtension("png")
         
-        let task = Process()
-        task.launchPath = "/usr/sbin/screencapture"
-        task.arguments = [
-            "-l\(id)",  // Capture specific window by ID
-            "-x",       // Do not play sound
-            tempURL.path
-        ]
-        
-        task.launch()
-        task.waitUntilExit()
-        
-        if task.terminationStatus == 0 {
-            print("✅ Screenshot saved to \(tempURL.path)")
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(tempURL.path, forType: .string)
-            print("📋 Path copied to clipboard")
-            print("✅ Capture complete - returning safely")
-        } else {
-            print("❌ screencapture failed with status \(task.terminationStatus)")
+        // Use autorelease pool to ensure proper cleanup
+        autoreleasepool {
+            let task = Process()
+            task.launchPath = "/usr/sbin/screencapture"
+            task.arguments = [
+                "-l\(id)",  // Capture specific window by ID
+                "-x",       // Do not play sound
+                tempURL.path
+            ]
+            
+            task.launch()
+            task.waitUntilExit()
+            
+            if task.terminationStatus == 0 {
+                print("✅ Screenshot saved to \(tempURL.path)")
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(tempURL.path, forType: .string)
+                print("📋 Path copied to clipboard")
+                print("✅ Capture complete - returning safely")
+            } else {
+                print("❌ screencapture failed with status \(task.terminationStatus)")
+            }
         }
     }
     
@@ -257,6 +260,7 @@ final class WindowPicker: NSWindow {
     private var completion: (CGWindowID?) -> Void = { _ in }
     private var currentWinID: CGWindowID = 0
     private var highlightView: HighlightView!
+    private var selfRetain: WindowPicker? // Keep self alive until completion
 
     static func pick(_ handler: @escaping (CGWindowID?) -> Void) {
         let allFrame = NSScreen.screens.reduce(CGRect.null) { $0.union($1.frame) }
@@ -278,6 +282,9 @@ final class WindowPicker: NSWindow {
         overlay.ignoresMouseEvents = false
         overlay.isMovableByWindowBackground = false
         
+        // Retain self to prevent deallocation during picker operation
+        overlay.selfRetain = overlay
+        
         print("🖼️ Created overlay window: \(allFrame)")
         overlay.makeKeyAndOrderFront(nil)
         overlay.makeFirstResponder(hv)
@@ -291,8 +298,6 @@ final class WindowPicker: NSWindow {
         // Convert mouse location to view coordinates for debug cursor
         // NSEvent.mouseLocation gives coordinates in screen space with Y=0 at bottom
         // Our overlay window uses view coordinates with Y=0 at top
-        guard let mainScreen = NSScreen.main else { return }
-        let screenFrame = mainScreen.frame
         
         // Try without Y flip first to see if NSEvent.mouseLocation is already in view coordinates
         let debugCursorInView = CGPoint(
@@ -301,7 +306,8 @@ final class WindowPicker: NSWindow {
         )
         highlightView.debugCursorPos = debugCursorInView
         
-        print("🐛 Mouse at screen(\(loc.x), \(loc.y)) -> view(\(debugCursorInView.x), \(debugCursorInView.y))")
+        // Reduced debug logging to prevent memory pressure
+        // print("🐛 Mouse at screen(\(loc.x), \(loc.y)) -> view(\(debugCursorInView.x), \(debugCursorInView.y))")
         
         // Get the window directly under the mouse cursor
         let windowUnderCursor = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
@@ -339,24 +345,15 @@ final class WindowPicker: NSWindow {
             if windowRect.contains(mouseInCGCoords) {
                 currentWinID = winID
                 
-                print("🔍 DEBUG: Window \(winID) bounds from CGWindowList: (\(x), \(y), \(w), \(h))")
-                print("🔍 DEBUG: Mouse location from NSEvent: (\(loc.x), \(loc.y))")
-                print("🔍 DEBUG: Overlay frame: \(frame)")
-                
-                // Try different Y coordinate conversions to see which works
-                let option1 = CGRect(x: x - frame.minX, y: y - frame.minY, width: w, height: h)
-                let option2 = CGRect(x: x - frame.minX, y: frame.maxY - (y + h), width: w, height: h) 
-                let option3 = CGRect(x: x - frame.minX, y: frame.maxY - y, width: w, height: h)
-                
-                print("🔍 DEBUG: Option 1 (no Y flip): \(option1)")
-                print("🔍 DEBUG: Option 2 (flip with height): \(option2)")  
-                print("🔍 DEBUG: Option 3 (flip without height): \(option3)")
-                
-                // Use option 2 - CGWindowList uses bottom-origin, NSView uses top-origin  
-                let convertedRect = option2
+                // Convert CGWindowList coordinates (bottom-origin) to NSView coordinates (top-origin)
+                let convertedRect = CGRect(
+                    x: x - frame.minX, 
+                    y: frame.maxY - (y + h), 
+                    width: w, 
+                    height: h
+                )
                 
                 highlightView.hoverRect = convertedRect
-                print("🎯 Using option 2 for window \(winID)")
                 break
             }
         }
@@ -369,15 +366,36 @@ final class WindowPicker: NSWindow {
     override func mouseDown(with event: NSEvent) { 
         print("🖱️ Mouse clicked! Window ID: \(currentWinID)")
         let selectedID = currentWinID != 0 ? currentWinID : nil
-        close()  // Close immediately, don't defer
-        completion(selectedID)
+        
+        // Capture completion handler and nullify to prevent double-call
+        let handler = completion
+        completion = { _ in }
+        
+        // Close window first, then call completion to avoid memory issues
+        close()
+        
+        // Call completion on next run loop cycle to ensure window is fully closed
+        DispatchQueue.main.async { [weak self] in
+            handler(selectedID)
+            // Release self-retain after completion
+            self?.selfRetain = nil
+        }
     }
     
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 { // Escape key
             print("⎋ Escape pressed - canceling")
-            completion(nil)
+            
+            // Capture completion handler and nullify to prevent double-call
+            let handler = completion
+            completion = { _ in }
+            
             close()
+            DispatchQueue.main.async { [weak self] in
+                handler(nil)
+                // Release self-retain after completion
+                self?.selfRetain = nil
+            }
         } else {
             super.keyDown(with: event)
         }
@@ -385,8 +403,17 @@ final class WindowPicker: NSWindow {
     
     override func cancelOperation(_ sender: Any?) { 
         print("❌ Operation canceled")
-        completion(nil)
-        close() 
+        
+        // Capture completion handler and nullify to prevent double-call
+        let handler = completion
+        completion = { _ in }
+        
+        close()
+        DispatchQueue.main.async { [weak self] in
+            handler(nil)
+            // Release self-retain after completion
+            self?.selfRetain = nil
+        }
     }
 }
 
