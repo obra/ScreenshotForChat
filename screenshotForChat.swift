@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private var hotKeyRef: EventHotKeyRef?
+    private var fullScreenHotKeyRef: EventHotKeyRef?
 
     func applicationDidFinishLaunching(_ note: Notification) {
         Self.shared = self
@@ -44,6 +45,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: ""               // Remove key equivalent from menu
         )
         menu.addItem(captureItem)
+        
+        let fullScreenItem = NSMenuItem(
+            title: "Capture Full Screen (⌘⇧9)",
+            action: #selector(captureFullScreen),
+            keyEquivalent: ""
+        )
+        menu.addItem(fullScreenItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(
             title: "Quit",
@@ -77,6 +85,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func captureFullScreen() {
+        print("📸 Starting full screen capture...")
+        captureEntireScreen()
+    }
+    
     @objc private func quit() { NSApp.terminate(nil) }
 
     // MARK: – ScreenCaptureKit work —
@@ -143,6 +156,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    private func captureEntireScreen() {
+        print("📸 Starting full screen capture...")
+        
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("screenshot-fullscreen-\(UUID().uuidString)")
+            .appendingPathExtension("png")
+        
+        // Use autorelease pool to ensure proper cleanup
+        autoreleasepool {
+            let task = Process()
+            task.launchPath = "/usr/sbin/screencapture"
+            task.arguments = [
+                "-x",       // Do not play sound
+                tempURL.path
+            ]
+            
+            task.launch()
+            task.waitUntilExit()
+            
+            if task.terminationStatus == 0 {
+                print("✅ Full screen screenshot saved to \(tempURL.path)")
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(tempURL.path, forType: .string)
+                print("📋 Path copied to clipboard")
+                print("✅ Full screen capture complete")
+            } else {
+                print("❌ Full screen screencapture failed with status \(task.terminationStatus)")
+            }
+        }
+    }
+    
     private func saveImageSync(_ cgImage: CGImage) {
         print("🔄 Saving image...")
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -171,10 +215,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: – Global hot-key (Carbon) —
 
     private func registerGlobalHotKey() {
+        // Register Cmd+Shift+0 for window picker
         let hotKeyID = EventHotKeyID(signature: OSType(UInt32(bitPattern: Int32("SCAP".fourCharCode))),
                                      id: 1)
 
-        // cmdKey | shiftKey
         let result = RegisterEventHotKey(UInt32(kVK_ANSI_0),
                                         UInt32(cmdKey | shiftKey),
                                         hotKeyID,
@@ -185,7 +229,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if result == noErr {
             print("⌨️  Global hotkey (⌘⇧0) registered successfully")
         } else {
-            print("❌ Failed to register global hotkey, error: \(result)")
+            print("❌ Failed to register global hotkey (⌘⇧0), error: \(result)")
+        }
+        
+        // Register Cmd+Shift+9 for full screen capture
+        let fullScreenHotKeyID = EventHotKeyID(signature: OSType(UInt32(bitPattern: Int32("SCAP".fourCharCode))),
+                                               id: 2)
+
+        let fullScreenResult = RegisterEventHotKey(UInt32(kVK_ANSI_9),
+                                                  UInt32(cmdKey | shiftKey),
+                                                  fullScreenHotKeyID,
+                                                  GetEventDispatcherTarget(),
+                                                  0,
+                                                  &fullScreenHotKeyRef)
+        
+        if fullScreenResult == noErr {
+            print("⌨️  Global hotkey (⌘⇧9) registered successfully")
+        } else {
+            print("❌ Failed to register global hotkey (⌘⇧9), error: \(fullScreenResult)")
         }
 
         // Install handler once.
@@ -201,10 +262,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                          MemoryLayout.size(ofValue: hkID),
                                          nil,
                                          &hkID)
-            if status == noErr && hkID.id == 1 {
-                print("✅ Starting window picker...")
-                DispatchQueue.main.async {
-                    AppDelegate.shared?.startPicking()
+            if status == noErr {
+                if hkID.id == 1 {
+                    print("✅ Starting window picker...")
+                    DispatchQueue.main.async {
+                        AppDelegate.shared?.startPicking()
+                    }
+                } else if hkID.id == 2 {
+                    print("✅ Starting full screen capture...")
+                    DispatchQueue.main.async {
+                        AppDelegate.shared?.captureFullScreen()
+                    }
                 }
             }
             return noErr
@@ -252,6 +320,12 @@ final class HighlightView: NSView {
     override var acceptsFirstResponder: Bool {
         return true
     }
+    
+    override func keyDown(with event: NSEvent) {
+        print("🔍 HIGHLIGHT VIEW: Key pressed with code: \(event.keyCode)")
+        // Forward key events to the window
+        window?.keyDown(with: event)
+    }
 }
 
 // MARK: –——————————————————  Picker overlay window  ——————————————————
@@ -261,8 +335,23 @@ final class WindowPicker: NSWindow {
     private var currentWinID: CGWindowID = 0
     private var highlightView: HighlightView!
     private var selfRetain: WindowPicker? // Keep self alive until completion
+    private var previouslyFocusedApp: NSRunningApplication? // App to restore focus to
+    private var previouslyFocusedWindowID: CGWindowID? // Window to restore focus to
+    private var keyEventMonitor: Any? // Global key event monitor
 
     static func pick(_ handler: @escaping (CGWindowID?) -> Void) {
+        // FIRST: Capture the current focus state BEFORE doing anything else
+        let previousApp = NSWorkspace.shared.frontmostApplication
+        let previousWindowID = getCurrentlyFocusedWindowID()
+        
+        if let app = previousApp {
+            print("📝 INITIAL: Frontmost app is: \(app.localizedName ?? "Unknown") (bundle: \(app.bundleIdentifier ?? "Unknown"))")
+        }
+        if let windowID = previousWindowID {
+            print("📝 INITIAL: Top window ID: \(windowID)")
+        }
+        
+        // NOW create the overlay
         let allFrame = NSScreen.screens.reduce(CGRect.null) { $0.union($1.frame) }
         let overlay = WindowPicker(contentRect: allFrame,
                                    styleMask: .borderless,
@@ -282,13 +371,134 @@ final class WindowPicker: NSWindow {
         overlay.ignoresMouseEvents = false
         overlay.isMovableByWindowBackground = false
         
+        // Store the captured focus state
+        overlay.previouslyFocusedApp = previousApp
+        overlay.previouslyFocusedWindowID = previousWindowID
+        
         // Retain self to prevent deallocation during picker operation
         overlay.selfRetain = overlay
         
+        // Set up global key event monitor for escape key
+        overlay.keyEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+            print("🔍 GLOBAL KEY: Key pressed with code: \(event.keyCode)")
+            if event.keyCode == 53 { // Escape key
+                print("⎋ Global escape detected - canceling picker")
+                overlay.handleEscapeKey()
+            }
+        }
+        
         print("🖼️ Created overlay window: \(allFrame)")
         overlay.makeKeyAndOrderFront(nil)
+        // Ensure the overlay window becomes key to receive key events
+        overlay.becomeKey()
         overlay.makeFirstResponder(hv)
-        NSApp.activate(ignoringOtherApps: true)
+        // Don't activate our app - let the overlay window handle events without stealing app focus
+        
+        // Debug: Check what happened to focus after showing overlay
+        if let currentApp = NSWorkspace.shared.frontmostApplication {
+            print("📝 AFTER OVERLAY: Frontmost app is now: \(currentApp.localizedName ?? "Unknown")")
+            if currentApp.bundleIdentifier != previousApp?.bundleIdentifier {
+                print("⚠️ WARNING: App focus changed from \(previousApp?.localizedName ?? "Unknown") to \(currentApp.localizedName ?? "Unknown")")
+            } else {
+                print("✅ App focus remained with: \(currentApp.localizedName ?? "Unknown")")
+            }
+        }
+    }
+    
+    private static func getCurrentlyFocusedWindowID() -> CGWindowID? {
+        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+        guard let windows = windowList as? [[String: Any]] else { return nil }
+        
+        // Look for the window with the highest layer (most likely to be focused)
+        for window in windows.sorted(by: { 
+            let layer1 = $0[kCGWindowLayer as String] as? Int ?? 0
+            let layer2 = $1[kCGWindowLayer as String] as? Int ?? 0
+            return layer1 > layer2
+        }) {
+            if let windowID = window[kCGWindowNumber as String] as? CGWindowID {
+                return windowID
+            }
+        }
+        return nil
+    }
+    
+    private func restorePreviousAppFocus() {
+        guard let app = previouslyFocusedApp else {
+            print("⚠️ No previous app to restore focus to")
+            return
+        }
+        
+        print("🔄 RESTORE: Starting restoration to: \(app.localizedName ?? "Unknown")")
+        
+        // Check what's currently frontmost before restoration
+        if let currentApp = NSWorkspace.shared.frontmostApplication {
+            print("🔄 RESTORE: Currently frontmost: \(currentApp.localizedName ?? "Unknown")")
+        }
+        
+        // Use the most direct approach to activate the app
+        app.activate(options: [])
+        
+        // Check if restoration worked
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let nowApp = NSWorkspace.shared.frontmostApplication {
+                print("🔄 RESTORE: After restoration, frontmost is: \(nowApp.localizedName ?? "Unknown")")
+            }
+        }
+        
+        // If we have a specific window ID, try to bring it to front
+        if let windowID = previouslyFocusedWindowID {
+            print("🔄 Attempting to restore window \(windowID)")
+            // Try to find and focus the specific window using Core Graphics
+            let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID)
+            if let windows = windowList as? [[String: Any]] {
+                for window in windows {
+                    if let wID = window[kCGWindowNumber as String] as? CGWindowID, wID == windowID {
+                        // Window still exists, try to bring it to front
+                        print("✅ Found target window, attempting to focus")
+                        break
+                    }
+                }
+            }
+        }
+    }
+    
+    // Allow window to become key to receive key events
+    override var canBecomeKey: Bool {
+        return true
+    }
+    
+    override var canBecomeMain: Bool {
+        return true
+    }
+    
+    func handleEscapeKey() {
+        print("⎋ Handling escape key press")
+        
+        // Capture completion handler and nullify to prevent double-call
+        let handler = completion
+        completion = { _ in }
+        
+        // Clean up key event monitor
+        if let monitor = keyEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyEventMonitor = nil
+        }
+        
+        // Restore focus IMMEDIATELY before doing anything else
+        print("🔄 IMMEDIATE ESCAPE: Restoring focus before close")
+        restorePreviousAppFocus()
+        
+        close()
+        DispatchQueue.main.async {
+            print("🔄 ESCAPE COMPLETION: Calling handler")
+            handler(nil)
+        }
+        
+        // Release self-retain after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            print("🔄 ESCAPE CLEANUP: Releasing self-retain")
+            self?.selfRetain = nil
+        }
     }
 
     override func mouseMoved(with event: NSEvent) {
@@ -371,18 +581,34 @@ final class WindowPicker: NSWindow {
         let handler = completion
         completion = { _ in }
         
-        // Close window first, then call completion to avoid memory issues
+        // Clean up key event monitor
+        if let monitor = keyEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyEventMonitor = nil
+        }
+        
+        // Restore focus IMMEDIATELY before doing anything else
+        print("🔄 IMMEDIATE: Restoring focus before close")
+        restorePreviousAppFocus()
+        
+        // Close window 
         close()
         
-        // Call completion on next run loop cycle to ensure window is fully closed
-        DispatchQueue.main.async { [weak self] in
+        // Call completion handler on next run loop cycle
+        DispatchQueue.main.async {
+            print("🔄 COMPLETION: Calling handler")
             handler(selectedID)
-            // Release self-retain after completion
+        }
+        
+        // Release self-retain after a delay to ensure everything completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            print("🔄 CLEANUP: Releasing self-retain")
             self?.selfRetain = nil
         }
     }
     
     override func keyDown(with event: NSEvent) {
+        print("🔍 KEY DEBUG: Key pressed with code: \(event.keyCode)")
         if event.keyCode == 53 { // Escape key
             print("⎋ Escape pressed - canceling")
             
@@ -390,10 +616,19 @@ final class WindowPicker: NSWindow {
             let handler = completion
             completion = { _ in }
             
+            // Restore focus IMMEDIATELY before doing anything else
+            print("🔄 IMMEDIATE ESCAPE: Restoring focus before close")
+            restorePreviousAppFocus()
+            
             close()
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async {
+                print("🔄 ESCAPE COMPLETION: Calling handler")
                 handler(nil)
-                // Release self-retain after completion
+            }
+            
+            // Release self-retain after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                print("🔄 ESCAPE CLEANUP: Releasing self-retain")
                 self?.selfRetain = nil
             }
         } else {
@@ -408,10 +643,25 @@ final class WindowPicker: NSWindow {
         let handler = completion
         completion = { _ in }
         
+        // Clean up key event monitor
+        if let monitor = keyEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyEventMonitor = nil
+        }
+        
+        // Restore focus IMMEDIATELY before doing anything else
+        print("🔄 IMMEDIATE CANCEL: Restoring focus before close")
+        restorePreviousAppFocus()
+        
         close()
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.async {
+            print("🔄 CANCEL COMPLETION: Calling handler")
             handler(nil)
-            // Release self-retain after completion
+        }
+        
+        // Release self-retain after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            print("🔄 CANCEL CLEANUP: Releasing self-retain")
             self?.selfRetain = nil
         }
     }
