@@ -62,6 +62,9 @@ class CaptureManager: ObservableObject {
                 config.scalesToFit = false
             }
             
+            // Flash the window before capture
+            await flashWindow(windowID: windowID)
+            
             // Capture the screenshot
             let image = try await SCScreenshotManager.captureImage(contentFilter: contentFilter, configuration: config)
             
@@ -109,6 +112,9 @@ class CaptureManager: ObservableObject {
                 config.width = Int(primaryDisplay.width)
                 config.height = Int(primaryDisplay.height)
             }
+            
+            // Flash the screen before capture
+            await flashScreen()
             
             // Capture the screenshot
             let image = try await SCScreenshotManager.captureImage(contentFilter: contentFilter, configuration: config)
@@ -159,5 +165,77 @@ class CaptureManager: ObservableObject {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(path, forType: .string)
         print("📋 Path copied to clipboard")
+    }
+    
+    @MainActor
+    private func flashWindow(windowID: CGWindowID) async {
+        // Get window bounds from Core Graphics
+        let windowListInfo = CGWindowListCopyWindowInfo(.optionIncludingWindow, windowID)
+        guard let windowInfo = windowListInfo as? [[String: Any]],
+              let windowDict = windowInfo.first,
+              let boundsDict = windowDict[kCGWindowBounds as String] as? [String: Any] else {
+            print("❌ Could not get window bounds for flash effect")
+            return
+        }
+        
+        let x = boundsDict["X"] as? CGFloat ?? 0
+        let y = boundsDict["Y"] as? CGFloat ?? 0
+        let width = boundsDict["Width"] as? CGFloat ?? 100
+        let height = boundsDict["Height"] as? CGFloat ?? 100
+        
+        // Convert from CG coordinates (bottom-left origin) to NSScreen coordinates (top-left origin)
+        let screenHeight = NSScreen.main?.frame.height ?? 0
+        let windowRect = NSRect(x: x, y: screenHeight - y - height, width: width, height: height)
+        
+        await createFlashEffect(frame: windowRect)
+    }
+    
+    @MainActor
+    private func flashScreen() async {
+        // Flash all screens
+        for screen in NSScreen.screens {
+            await createFlashEffect(frame: screen.frame)
+        }
+    }
+    
+    @MainActor
+    private func createFlashEffect(frame: NSRect) async {
+        // Create a borderless window that covers the target area
+        let flashWindow = NSWindow(
+            contentRect: frame,
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        
+        // Configure the flash window for more visibility
+        flashWindow.backgroundColor = NSColor.white
+        flashWindow.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)) + 1)
+        flashWindow.isOpaque = true
+        flashWindow.hasShadow = false
+        flashWindow.ignoresMouseEvents = true
+        flashWindow.collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
+        
+        // Start with the flash window fully opaque
+        flashWindow.alphaValue = 1.0
+        flashWindow.orderFrontRegardless()
+        
+        // Animate the flash effect with a more pronounced fade
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            // Hold the full flash for a brief moment
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.25
+                    context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    flashWindow.animator().alphaValue = 0.0
+                } completionHandler: {
+                    // Ensure cleanup happens on main thread
+                    DispatchQueue.main.async {
+                        flashWindow.orderOut(nil)
+                        continuation.resume()
+                    }
+                }
+            }
+        }
     }
 }

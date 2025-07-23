@@ -7,12 +7,16 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0")
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
+        .package(url: "https://github.com/sindresorhus/LaunchAtLogin-Modern", from: "1.0.0")
     ],
     targets: [
         .executableTarget(
             name: "ScreenshotForChat",
-            dependencies: ["KeyboardShortcuts"],
+            dependencies: [
+                "KeyboardShortcuts",
+                .product(name: "LaunchAtLogin", package: "LaunchAtLogin-Modern")
+            ],
             path: "Sources/ScreenshotForChat"
         )
     ]
