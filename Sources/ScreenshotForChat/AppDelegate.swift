@@ -6,7 +6,13 @@ import SwiftUI
 import KeyboardShortcuts
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private let captureManager = CaptureManager()
+    private let captureManager: CaptureManager = {
+        if #available(macOS 14.0, *) {
+            return CaptureManager()
+        } else {
+            fatalError("ScreenCaptureKit requires macOS 14.0 or later")
+        }
+    }()
     private var statusItem: NSStatusItem!
     private var settingsWindowController: NSWindowController?
     
@@ -25,6 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("✅ App setup complete")
     }
     
+    @MainActor
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
@@ -37,11 +44,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Capture Window (⌘⇧0)", action: #selector(captureWindow), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Capture Full Screen (⌘⇧9)", action: #selector(captureFullScreen), keyEquivalent: ""))
+        
+        // Get current shortcuts for display
+        let windowShortcut = KeyboardShortcuts.getShortcut(for: .windowCapture)
+        let fullScreenShortcut = KeyboardShortcuts.getShortcut(for: .fullScreenCapture)
+        
+        let windowItem = NSMenuItem(title: "Capture Window", action: #selector(captureWindow), keyEquivalent: "")
+        if let shortcut = windowShortcut {
+            windowItem.title = "Capture Window (\(shortcut.description))"
+        }
+        menu.addItem(windowItem)
+        
+        let fullScreenItem = NSMenuItem(title: "Capture Full Screen", action: #selector(captureFullScreen), keyEquivalent: "")
+        if let shortcut = fullScreenShortcut {
+            fullScreenItem.title = "Capture Full Screen (\(shortcut.description))"
+        }
+        menu.addItem(fullScreenItem)
+        
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: ""))
         
         statusItem.menu = menu
         print("📋 Menubar created")

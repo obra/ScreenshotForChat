@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "ScreenshotForChat",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v14)
     ],
     dependencies: [
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0")
