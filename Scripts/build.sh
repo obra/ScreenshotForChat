@@ -42,6 +42,18 @@ else
     exit 1
 fi
 
+# Copy entitlements if they exist (for code signing)
+if [ -f "Resources/ScreenshotForChat.entitlements" ]; then
+    cp "Resources/ScreenshotForChat.entitlements" "${APP_BUNDLE}/Contents/"
+fi
+
+# Copy KeyboardShortcuts resource bundle
+KEYBOARD_SHORTCUTS_BUNDLE=".build/arm64-apple-macosx/release/KeyboardShortcuts_KeyboardShortcuts.bundle"
+if [ -d "${KEYBOARD_SHORTCUTS_BUNDLE}" ]; then
+    echo "📚 Copying KeyboardShortcuts resource bundle..."
+    cp -r "${KEYBOARD_SHORTCUTS_BUNDLE}" "${APP_BUNDLE}/Contents/"
+fi
+
 # Make binary executable
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 

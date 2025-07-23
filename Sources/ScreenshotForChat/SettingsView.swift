@@ -8,81 +8,83 @@ struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
     
     var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label("General", systemImage: "gear")
-                }
-            
-            ShortcutsSettingsView()
-                .tabItem {
-                    Label("Shortcuts", systemImage: "keyboard")
-                }
-        }
-        .frame(width: 500, height: 300)
-    }
-}
-
-struct GeneralSettingsView: View {
-    @ObservedObject private var settings = AppSettings.shared
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("General Settings")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            VStack(alignment: .leading, spacing: 12) {
-                Toggle("Disable HiDPI scaling (use -R flag)", isOn: $settings.disableHiDPI)
-                    .help("When enabled, screenshots will not be scaled for retina displays")
-                
-                HStack {
-                    Text("Screenshots saved to:")
-                    Spacer()
-                    Text(NSTemporaryDirectory())
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
+        VStack(alignment: .leading, spacing: 24) {
+            // Header
+            HStack {
+                Image(systemName: "camera.viewfinder")
+                    .foregroundColor(.accentColor)
+                    .font(.title2)
+                Text("Screenshot for Chat")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Spacer()
             }
             
-            Spacer()
-        }
-        .padding()
-    }
-}
-
-struct ShortcutsSettingsView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Keyboard Shortcuts")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
+            // General Settings
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Window Capture:")
-                        .frame(width: 140, alignment: .trailing)
-                    KeyboardShortcuts.Recorder(for: .windowCapture)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Text("General")
+                    .font(.headline)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle("Disable HiDPI scaling", isOn: $settings.disableHiDPI)
+                        .help("When enabled, screenshots will not be scaled for retina displays")
+                    
+                    HStack {
+                        Text("Screenshots saved to:")
+                        Spacer()
+                        Text(NSTemporaryDirectory())
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+            }
+            
+            Divider()
+            
+            // Keyboard Shortcuts
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Keyboard Shortcuts")
+                    .font(.headline)
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Window Capture:")
+                            .frame(width: 140, alignment: .trailing)
+                        KeyboardShortcuts.Recorder(for: .windowCapture)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    
+                    HStack {
+                        Text("Full Screen Capture:")
+                            .frame(width: 140, alignment: .trailing)
+                        KeyboardShortcuts.Recorder(for: .fullScreenCapture)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
                 
-                HStack {
-                    Text("Full Screen Capture:")
-                        .frame(width: 140, alignment: .trailing)
-                    KeyboardShortcuts.Recorder(for: .fullScreenCapture)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Text("Global shortcuts work from any application")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
             
-            Text("Global shortcuts work from any application")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            // Copyright and License
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Copyright 2025 Jesse Vincent <jesse@fsck.com>")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text("Distributed under the MIT License. You're free to use, modify, and share this software.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
-        .padding()
+        .padding(24)
+        .frame(width: 500, height: 400)
     }
 }
+
 
 #Preview {
     SettingsView()
