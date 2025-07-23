@@ -114,7 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let hostingController = NSHostingController(rootView: settingsView)
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 528),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 548),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -170,31 +170,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         context.setShouldAntialias(true)
         context.interpolationQuality = .high
         
-        // Draw the camera viewfinder as the base, slightly smaller to leave room for sparkles
-        let cameraRect = NSRect(x: 1, y: 1, width: size.width - 2, height: size.height - 2)
+        // Draw the camera viewfinder smaller and shifted down-left to make room for prominent sparkles
+        let cameraSize: CGFloat = 11  // Smaller camera
+        let cameraRect = NSRect(x: 2, y: 2, width: cameraSize, height: cameraSize)  // Shifted down-left
         cameraImage.draw(in: cameraRect)
         
-        // Draw simple sparkle elements using Core Graphics for better control
+        // Draw more prominent sparkle elements using Core Graphics
         context.setFillColor(NSColor.white.cgColor)
         context.setStrokeColor(NSColor.white.cgColor)
-        context.setLineWidth(1.0)
+        context.setLineWidth(1.5)  // Thicker lines for more prominence
         
-        // Draw small sparkles manually for better visibility
-        let sparkle1Center = CGPoint(x: size.width - 4, y: size.height - 4)
-        let sparkle2Center = CGPoint(x: size.width - 8, y: size.height - 8)
+        // Draw multiple sparkles with varying sizes for better AI representation
+        let sparkles = [
+            (center: CGPoint(x: size.width - 3, y: size.height - 3), size: 3.0),      // Top-right large
+            (center: CGPoint(x: size.width - 7, y: size.height - 7), size: 2.0),     // Mid diagonal
+            (center: CGPoint(x: size.width - 2, y: size.height - 8), size: 2.5),     // Top-right medium
+            (center: CGPoint(x: size.width - 9, y: size.height - 2), size: 1.5)      // Bottom-right small
+        ]
         
-        // First sparkle (larger)
-        context.move(to: CGPoint(x: sparkle1Center.x, y: sparkle1Center.y - 2))
-        context.addLine(to: CGPoint(x: sparkle1Center.x, y: sparkle1Center.y + 2))
-        context.move(to: CGPoint(x: sparkle1Center.x - 2, y: sparkle1Center.y))
-        context.addLine(to: CGPoint(x: sparkle1Center.x + 2, y: sparkle1Center.y))
-        context.strokePath()
+        for sparkle in sparkles {
+            let center = sparkle.center
+            let sparkleSize = sparkle.size
+            
+            // Draw cross-shaped sparkle
+            context.move(to: CGPoint(x: center.x, y: center.y - sparkleSize))
+            context.addLine(to: CGPoint(x: center.x, y: center.y + sparkleSize))
+            context.move(to: CGPoint(x: center.x - sparkleSize, y: center.y))
+            context.addLine(to: CGPoint(x: center.x + sparkleSize, y: center.y))
+            
+            // Add diagonal lines for more star-like appearance
+            let diagSize = sparkleSize * 0.7
+            context.move(to: CGPoint(x: center.x - diagSize, y: center.y - diagSize))
+            context.addLine(to: CGPoint(x: center.x + diagSize, y: center.y + diagSize))
+            context.move(to: CGPoint(x: center.x - diagSize, y: center.y + diagSize))
+            context.addLine(to: CGPoint(x: center.x + diagSize, y: center.y - diagSize))
+        }
         
-        // Second sparkle (smaller)
-        context.move(to: CGPoint(x: sparkle2Center.x, y: sparkle2Center.y - 1.5))
-        context.addLine(to: CGPoint(x: sparkle2Center.x, y: sparkle2Center.y + 1.5))
-        context.move(to: CGPoint(x: sparkle2Center.x - 1.5, y: sparkle2Center.y))
-        context.addLine(to: CGPoint(x: sparkle2Center.x + 1.5, y: sparkle2Center.y))
         context.strokePath()
         
         compositeImage.unlockFocus()

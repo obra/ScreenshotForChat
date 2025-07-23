@@ -27,7 +27,7 @@ struct SettingsView: View {
                         Text("Screenshot for Chat")
                             .font(.title2)
                             .fontWeight(.semibold)
-                        Text("AI-powered screenshot tool")
+                        Text("Modern macOS screenshot tool for chat sharing")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -160,11 +160,15 @@ struct SettingsView: View {
                 Text("Distributed under the MIT License. You're free to use, modify, and share this software.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                
+                Link("GitHub Repository", destination: URL(string: "https://github.com/obra/screenshotForChat")!)
+                    .font(.caption)
+                    .padding(.top, 4)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
         }
-        .frame(width: 520, height: 528)
+        .frame(width: 520, height: 548)
     }
 }
 
