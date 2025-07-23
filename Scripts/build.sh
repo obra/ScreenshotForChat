@@ -42,6 +42,22 @@ else
     exit 1
 fi
 
+# Copy app icon
+if [ -f "Resources/ScreenshotForChat.icns" ]; then
+    echo "🎨 Copying app icon..."
+    cp "Resources/ScreenshotForChat.icns" "${APP_BUNDLE}/Contents/Resources/"
+else
+    echo "⚠️ App icon not found - run Scripts/setup-icons.sh first"
+fi
+
+# Copy menu bar icons
+if [ -f "Resources/menubar_16x16.png" ]; then
+    echo "🔍 Copying menu bar icons..."
+    cp "Resources/menubar_"*.png "${APP_BUNDLE}/Contents/Resources/"
+else
+    echo "⚠️ Menu bar icons not found - run Scripts/setup-icons.sh first"
+fi
+
 # Copy entitlements if they exist (for code signing)
 if [ -f "Resources/ScreenshotForChat.entitlements" ]; then
     cp "Resources/ScreenshotForChat.entitlements" "${APP_BUNDLE}/Contents/"

@@ -5,6 +5,7 @@ import AppKit
 import SwiftUI
 import KeyboardShortcuts
 import LaunchAtLogin
+import ScreenCaptureKit
 
 class SettingsWindowDelegate: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
@@ -39,8 +40,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Check if we're running from a restricted location
         checkForRestrictedLocation()
         
-        // Show first-run launch at login prompt
+        // Show first-run launch at login prompt (this will handle permission setup too)
         showFirstRunPromptIfNeeded()
+        
+        // Check if we need to do permission setup (only for Applications relaunches)
+        // This won't run on first run since hasShownFirstRunPrompt will be false
+        checkIfPermissionSetupNeeded()
         
         // Run as agent (no Dock icon)
         NSApp.setActivationPolicy(.accessory)
@@ -59,14 +64,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         
         if let button = statusItem.button {
-            // Create composite icon with camera viewfinder and sparkles
-            if let cameraImage = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Screenshot") {
-                // Create a composite image with camera and sparkles
-                let compositeImage = createCompositeIcon(cameraImage: cameraImage)
-                button.image = compositeImage
+            // Use the custom menubar icon
+            if let menubarImage = loadMenubarIcon() {
+                button.image = menubarImage
             } else {
-                // Fallback to text if system symbols aren't available
-                button.title = "📷✨"
+                // Fallback to system symbol if custom icon not found
+                if let cameraImage = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Screenshot") {
+                    button.image = cameraImage
+                } else {
+                    button.title = "📷"
+                }
             }
         }
         
@@ -154,87 +161,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("⌨️ Keyboard shortcuts registered")
     }
     
-    private func createCompositeIcon(cameraImage: NSImage) -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        let compositeImage = NSImage(size: size)
-        
-        compositeImage.lockFocus()
-        
-        // Set up graphics context for high quality rendering
-        guard let context = NSGraphicsContext.current?.cgContext else {
-            compositeImage.unlockFocus()
-            return cameraImage
+    private func loadMenubarIcon() -> NSImage? {
+        // Try to load the custom menubar icon from the app bundle
+        guard let resourcePath = Bundle.main.resourcePath else {
+            print("⚠️ Could not find app bundle resource path")
+            return nil
         }
         
-        context.setAllowsAntialiasing(true)
-        context.setShouldAntialias(true)
-        context.interpolationQuality = .high
+        // Load the appropriate size for the current display
+        let iconPath = "\(resourcePath)/menubar_16x16.png"
         
-        // Draw the camera viewfinder smaller and shifted down-left to make room for prominent sparkles
-        let cameraSize: CGFloat = 11  // Smaller camera
-        let cameraRect = NSRect(x: 2, y: 2, width: cameraSize, height: cameraSize)  // Shifted down-left
-        cameraImage.draw(in: cameraRect)
-        
-        // Draw diamond-shaped golden sparkles like ✨ emoji
-        let goldColor = NSColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)  // Golden color
-        context.setFillColor(goldColor.cgColor)
-        context.setStrokeColor(goldColor.cgColor)
-        context.setLineWidth(0.5)
-        
-        // Define sparkles with diamond shapes and varying sizes
-        let sparkles = [
-            (center: CGPoint(x: size.width - 3, y: size.height - 3), size: 2.5),      // Top-right large
-            (center: CGPoint(x: size.width - 7, y: size.height - 7), size: 1.8),     // Mid diagonal
-            (center: CGPoint(x: size.width - 2, y: size.height - 8), size: 2.0),     // Top-right medium
-            (center: CGPoint(x: size.width - 9, y: size.height - 2), size: 1.3)      // Bottom-right small
-        ]
-        
-        for sparkle in sparkles {
-            let center = sparkle.center
-            let size = sparkle.size
-            
-            // Create diamond shape (four-pointed star)
-            let path = CGMutablePath()
-            
-            // Top point
-            path.move(to: CGPoint(x: center.x, y: center.y + size))
-            // Right point
-            path.addLine(to: CGPoint(x: center.x + size * 0.4, y: center.y))
-            // Bottom point
-            path.addLine(to: CGPoint(x: center.x, y: center.y - size))
-            // Left point
-            path.addLine(to: CGPoint(x: center.x - size * 0.4, y: center.y))
-            // Close path
-            path.closeSubpath()
-            
-            // Fill the diamond
-            context.addPath(path)
-            context.fillPath()
-            
-            // Add a smaller inner sparkle for depth
-            let innerSize = size * 0.6
-            let innerPath = CGMutablePath()
-            innerPath.move(to: CGPoint(x: center.x, y: center.y + innerSize))
-            innerPath.addLine(to: CGPoint(x: center.x + innerSize * 0.3, y: center.y))
-            innerPath.addLine(to: CGPoint(x: center.x, y: center.y - innerSize))
-            innerPath.addLine(to: CGPoint(x: center.x - innerSize * 0.3, y: center.y))
-            innerPath.closeSubpath()
-            
-            // Fill inner sparkle with slightly lighter gold
-            context.setFillColor(NSColor(red: 1.0, green: 0.9, blue: 0.2, alpha: 1.0).cgColor)
-            context.addPath(innerPath)
-            context.fillPath()
-            
-            // Reset to original gold for next sparkle
-            context.setFillColor(goldColor.cgColor)
+        if let image = NSImage(contentsOfFile: iconPath) {
+            // Make it a template image so it adapts to light/dark mode
+            image.isTemplate = true
+            print("✅ Loaded custom menubar icon from \(iconPath)")
+            return image
+        } else {
+            print("⚠️ Could not load menubar icon from \(iconPath)")
+            return nil
         }
-        
-        compositeImage.unlockFocus()
-        
-        // Make it template so it adapts to light/dark mode
-        compositeImage.isTemplate = true
-        
-        return compositeImage
     }
     
     private func checkResourceAccess() -> Bool {
@@ -327,15 +272,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Copy the app to /Applications/
             try FileManager.default.copyItem(atPath: bundlePath, toPath: destinationPath)
             
-            // Show success message and offer to relaunch
-            let alert = NSAlert()
-            alert.messageText = "App Moved Successfully"
-            alert.informativeText = "Screenshot for Chat has been moved to /Applications/. The app will now quit. Please launch it from /Applications/ for the best experience."
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
-            
-            NSApp.terminate(nil)
+            // Launch the Applications version and quit this one (no success dialog needed)
+            launchApplicationsVersionAndQuit(destinationPath: destinationPath)
         } catch {
             // Show error message
             let alert = NSAlert()
@@ -349,6 +287,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    private func launchApplicationsVersionAndQuit(destinationPath: String) {
+        // Use Process to launch the Applications version more reliably
+        let process = Process()
+        process.launchPath = "/usr/bin/open"
+        process.arguments = [destinationPath]
+        
+        do {
+            try process.run()
+            print("✅ Successfully launched Applications version")
+            
+            // Quit this instance after a brief delay to ensure the new app starts
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                NSApp.terminate(nil)
+            }
+        } catch {
+            print("❌ Failed to launch Applications version: \(error)")
+            
+            // If launch fails, just quit - user can manually launch from Applications
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.terminate(nil)
+            }
+        }
+    }
+    
     private func showFirstRunPromptIfNeeded() {
         let hasShownFirstRunPrompt = UserDefaults.standard.bool(forKey: "hasShownFirstRunPrompt")
         
@@ -356,20 +318,162 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Mark as shown so we don't show it again
             UserDefaults.standard.set(true, forKey: "hasShownFirstRunPrompt")
             
-            // Show the prompt after a brief delay to let the app finish launching
+            // Show the welcome flow after a brief delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                let alert = NSAlert()
-                alert.messageText = "Welcome to Screenshot for Chat!"
-                alert.informativeText = "Would you like Screenshot for Chat to launch automatically when you log in? You can change this later in Settings."
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: "Launch at Login")
-                alert.addButton(withTitle: "Not Now")
-                
-                let response = alert.runModal()
-                if response == .alertFirstButtonReturn {
-                    LaunchAtLogin.isEnabled = true
+                self.showFirstRunWelcomeAndPermissions()
+            }
+        }
+    }
+    
+    private func showFirstRunWelcomeAndPermissions() {
+        // Step 1: Welcome and launch at login setup
+        let welcomeAlert = NSAlert()
+        welcomeAlert.messageText = "Welcome to Screenshot for Chat!"
+        welcomeAlert.informativeText = "Would you like Screenshot for Chat to launch automatically when you log in? You can change this later in Settings.\n\nAfter this, we'll need to set up screen recording permissions."
+        welcomeAlert.alertStyle = .informational
+        welcomeAlert.addButton(withTitle: "Launch at Login & Continue")
+        welcomeAlert.addButton(withTitle: "Skip Launch at Login & Continue")
+        welcomeAlert.addButton(withTitle: "Cancel")
+        
+        let launchResponse = welcomeAlert.runModal()
+        if launchResponse == .alertFirstButtonReturn {
+            LaunchAtLogin.isEnabled = true
+            // User chose to continue - show permission setup
+            if !UserDefaults.standard.bool(forKey: "hasCompletedPermissionSetup") {
+                checkAndRequestScreenRecordingPermission()
+            }
+        } else if launchResponse == .alertSecondButtonReturn {
+            // User chose to skip launch at login but continue - show permission setup
+            if !UserDefaults.standard.bool(forKey: "hasCompletedPermissionSetup") {
+                checkAndRequestScreenRecordingPermission()
+            }
+        } else {
+            // User cancelled - mark as completed to avoid showing again
+            UserDefaults.standard.set(true, forKey: "hasCompletedPermissionSetup")
+        }
+    }
+    
+    @available(macOS 14.0, *)
+    private func checkIfPermissionSetupNeeded() {
+        let hasCompletedPermissionSetup = UserDefaults.standard.bool(forKey: "hasCompletedPermissionSetup")
+        let isRunningFromApplications = Bundle.main.bundlePath.hasPrefix("/Applications/")
+        let hasShownFirstRunPrompt = UserDefaults.standard.bool(forKey: "hasShownFirstRunPrompt")
+        
+        // Only handle Applications relaunch case (after first run is complete)
+        // First run permission setup is handled by showFirstRunWelcome()
+        if !hasCompletedPermissionSetup && isRunningFromApplications && hasShownFirstRunPrompt {
+            // Mark that we've run from Applications
+            UserDefaults.standard.set(true, forKey: "hasRunFromApplications")
+            
+            // Show permission setup for Applications relaunch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.checkAndRequestScreenRecordingPermission()
+            }
+        }
+    }
+    
+    @available(macOS 14.0, *)
+    private func checkPermissionsOnStartup() {
+        // Don't check permissions on regular startup to avoid triggering system dialogs
+        // Let permissions be checked naturally when user actually tries to take a screenshot
+        // This prevents unwanted system dialogs on every app launch
+        print("🔄 Skipping permission check on startup - will check when needed")
+    }
+    
+    private func showPermissionRequiredDialog() {
+        let alert = NSAlert()
+        alert.messageText = "Screen Recording Permission Required"
+        alert.informativeText = "Screenshot for Chat needs Screen Recording permission to capture your screen.\n\nClick \"Open System Settings\" to grant permission, then return to this app."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Remind Me Later")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Open System Settings to Privacy & Security > Screen & System Audio Recording
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+    
+    @available(macOS 14.0, *)
+    private func checkAndRequestScreenRecordingPermission() {
+        // First show our custom permission dialog without triggering system dialog
+        showScreenRecordingPermissionDialog()
+    }
+    
+    private func showScreenRecordingPermissionDialog() {
+        let alert = NSAlert()
+        alert.messageText = "Screen Recording Permission Required"
+        alert.informativeText = "Screenshot for Chat needs Screen Recording permission to capture your screen.\n\nAfter clicking \"Continue\", macOS will ask for permission. Please click \"Allow\" in the system dialog that appears."
+        alert.alertStyle = .informational
+        
+        // Add buttons in reverse order for proper vertical layout (primary button on top)
+        alert.addButton(withTitle: "Continue")
+        alert.addButton(withTitle: "Skip for Now")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Now trigger the system permission dialog by trying to access screen content
+            triggerSystemPermissionDialog()
+        } else {
+            // User skipped, show completion message
+            showPermissionGrantedMessage()
+        }
+    }
+    
+    @available(macOS 14.0, *)
+    private func triggerSystemPermissionDialog() {
+        // Trigger the system permission dialog and wait for user interaction
+        Task {
+            // First attempt - this will show the system dialog if permission not granted
+            do {
+                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                // If this succeeds immediately, permission was already granted
+                await MainActor.run {
+                    self.showPermissionGrantedMessage()
+                }
+            } catch {
+                // Permission dialog should have appeared - wait for user to interact with it
+                // Then check again after a reasonable delay
+                await MainActor.run {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                        self.checkPermissionAfterDialog()
+                    }
                 }
             }
         }
+    }
+    
+    @available(macOS 14.0, *)
+    private func checkPermissionAfterDialog() {
+        Task {
+            do {
+                _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+                // Permission now granted
+                await MainActor.run {
+                    self.showPermissionGrantedMessage()
+                }
+            } catch {
+                // Still no permission - show completion anyway
+                await MainActor.run {
+                    self.showPermissionGrantedMessage()
+                }
+            }
+        }
+    }
+    
+    private func showPermissionGrantedMessage() {
+        // Mark permission setup as complete
+        UserDefaults.standard.set(true, forKey: "hasCompletedPermissionSetup")
+        
+        let alert = NSAlert()
+        alert.messageText = "All Set!"
+        alert.informativeText = "Screenshot for Chat is ready to use. You can:\n\n• Use global keyboard shortcuts (configurable in Settings)\n• Click the camera icon in the menu bar\n• Take window or full-screen captures\n\nScreenshots are saved to your temp folder and the path is copied to your clipboard for easy sharing."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Got It!")
+        
+        alert.runModal()
     }
 }
