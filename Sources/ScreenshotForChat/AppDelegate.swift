@@ -38,14 +38,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         
         // Check if we're running from a restricted location
-        checkForRestrictedLocation()
+        let isInRestrictedLocation = checkForRestrictedLocation()
         
         // Show first-run launch at login prompt (this will handle permission setup too)
-        showFirstRunPromptIfNeeded()
+        // Skip if we're in a restricted location since we'll be moving to Applications
+        let isFirstRun = !UserDefaults.standard.bool(forKey: "hasShownFirstRunPrompt")
+        if !isInRestrictedLocation {
+            showFirstRunPromptIfNeeded()
+        }
         
         // Check if we need to do permission setup (only for Applications relaunches)
-        // This won't run on first run since hasShownFirstRunPrompt will be false
-        checkIfPermissionSetupNeeded()
+        // This won't run on first run since we detected it above
+        if !isFirstRun {
+            checkIfPermissionSetupNeeded()
+        }
         
         // Run as agent (no Dock icon)
         NSApp.setActivationPolicy(.accessory)
@@ -227,7 +233,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
     
-    private func checkForRestrictedLocation() {
+    private func checkForRestrictedLocation() -> Bool {
         let bundlePath = Bundle.main.bundlePath
         let homeDir = NSHomeDirectory()
         
@@ -253,9 +259,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     NSApp.terminate(nil)
                 }
-                break
+                return true
             }
         }
+        return false
     }
     
     private func moveToApplications() {
@@ -361,6 +368,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Only handle Applications relaunch case (after first run is complete)
         // First run permission setup is handled by showFirstRunWelcome()
+        // Don't run if first run flow hasn't been shown yet (it will handle permissions)
         if !hasCompletedPermissionSetup && isRunningFromApplications && hasShownFirstRunPrompt {
             // Mark that we've run from Applications
             UserDefaults.standard.set(true, forKey: "hasRunFromApplications")
@@ -415,6 +423,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
+            // Mark permission setup as completed BEFORE triggering system dialog
+            // This prevents re-prompting after system relaunch
+            UserDefaults.standard.set(true, forKey: "hasCompletedPermissionSetup")
+            
             // Now trigger the system permission dialog by trying to access screen content
             triggerSystemPermissionDialog()
         } else {
@@ -465,8 +477,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func showPermissionGrantedMessage() {
-        // Mark permission setup as complete
-        UserDefaults.standard.set(true, forKey: "hasCompletedPermissionSetup")
+        // Note: hasCompletedPermissionSetup flag is set earlier to survive system relaunch
         
         let alert = NSAlert()
         alert.messageText = "All Set!"
