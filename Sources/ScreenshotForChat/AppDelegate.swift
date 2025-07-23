@@ -175,38 +175,59 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let cameraRect = NSRect(x: 2, y: 2, width: cameraSize, height: cameraSize)  // Shifted down-left
         cameraImage.draw(in: cameraRect)
         
-        // Draw more prominent sparkle elements using Core Graphics
-        context.setFillColor(NSColor.white.cgColor)
-        context.setStrokeColor(NSColor.white.cgColor)
-        context.setLineWidth(1.5)  // Thicker lines for more prominence
+        // Draw diamond-shaped golden sparkles like ✨ emoji
+        let goldColor = NSColor(red: 1.0, green: 0.84, blue: 0.0, alpha: 1.0)  // Golden color
+        context.setFillColor(goldColor.cgColor)
+        context.setStrokeColor(goldColor.cgColor)
+        context.setLineWidth(0.5)
         
-        // Draw multiple sparkles with varying sizes for better AI representation
+        // Define sparkles with diamond shapes and varying sizes
         let sparkles = [
-            (center: CGPoint(x: size.width - 3, y: size.height - 3), size: 3.0),      // Top-right large
-            (center: CGPoint(x: size.width - 7, y: size.height - 7), size: 2.0),     // Mid diagonal
-            (center: CGPoint(x: size.width - 2, y: size.height - 8), size: 2.5),     // Top-right medium
-            (center: CGPoint(x: size.width - 9, y: size.height - 2), size: 1.5)      // Bottom-right small
+            (center: CGPoint(x: size.width - 3, y: size.height - 3), size: 2.5),      // Top-right large
+            (center: CGPoint(x: size.width - 7, y: size.height - 7), size: 1.8),     // Mid diagonal
+            (center: CGPoint(x: size.width - 2, y: size.height - 8), size: 2.0),     // Top-right medium
+            (center: CGPoint(x: size.width - 9, y: size.height - 2), size: 1.3)      // Bottom-right small
         ]
         
         for sparkle in sparkles {
             let center = sparkle.center
-            let sparkleSize = sparkle.size
+            let size = sparkle.size
             
-            // Draw cross-shaped sparkle
-            context.move(to: CGPoint(x: center.x, y: center.y - sparkleSize))
-            context.addLine(to: CGPoint(x: center.x, y: center.y + sparkleSize))
-            context.move(to: CGPoint(x: center.x - sparkleSize, y: center.y))
-            context.addLine(to: CGPoint(x: center.x + sparkleSize, y: center.y))
+            // Create diamond shape (four-pointed star)
+            let path = CGMutablePath()
             
-            // Add diagonal lines for more star-like appearance
-            let diagSize = sparkleSize * 0.7
-            context.move(to: CGPoint(x: center.x - diagSize, y: center.y - diagSize))
-            context.addLine(to: CGPoint(x: center.x + diagSize, y: center.y + diagSize))
-            context.move(to: CGPoint(x: center.x - diagSize, y: center.y + diagSize))
-            context.addLine(to: CGPoint(x: center.x + diagSize, y: center.y - diagSize))
+            // Top point
+            path.move(to: CGPoint(x: center.x, y: center.y + size))
+            // Right point
+            path.addLine(to: CGPoint(x: center.x + size * 0.4, y: center.y))
+            // Bottom point
+            path.addLine(to: CGPoint(x: center.x, y: center.y - size))
+            // Left point
+            path.addLine(to: CGPoint(x: center.x - size * 0.4, y: center.y))
+            // Close path
+            path.closeSubpath()
+            
+            // Fill the diamond
+            context.addPath(path)
+            context.fillPath()
+            
+            // Add a smaller inner sparkle for depth
+            let innerSize = size * 0.6
+            let innerPath = CGMutablePath()
+            innerPath.move(to: CGPoint(x: center.x, y: center.y + innerSize))
+            innerPath.addLine(to: CGPoint(x: center.x + innerSize * 0.3, y: center.y))
+            innerPath.addLine(to: CGPoint(x: center.x, y: center.y - innerSize))
+            innerPath.addLine(to: CGPoint(x: center.x - innerSize * 0.3, y: center.y))
+            innerPath.closeSubpath()
+            
+            // Fill inner sparkle with slightly lighter gold
+            context.setFillColor(NSColor(red: 1.0, green: 0.9, blue: 0.2, alpha: 1.0).cgColor)
+            context.addPath(innerPath)
+            context.fillPath()
+            
+            // Reset to original gold for next sparkle
+            context.setFillColor(goldColor.cgColor)
         }
-        
-        context.strokePath()
         
         compositeImage.unlockFocus()
         
