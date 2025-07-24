@@ -91,12 +91,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let regionShortcut = KeyboardShortcuts.getShortcut(for: .regionCapture)
         
         let windowItem = NSMenuItem(title: "Capture Window", action: #selector(captureWindow), keyEquivalent: "")
+        if let shortcut = windowShortcut {
+            windowItem.title = "Capture Window"
+            windowItem.keyEquivalent = shortcut.nsMenuItemKeyEquivalent ?? ""
+            windowItem.keyEquivalentModifierMask = shortcut.modifiers
+        }
         menu.addItem(windowItem)
         
         let fullScreenItem = NSMenuItem(title: "Capture Full Screen", action: #selector(captureFullScreen), keyEquivalent: "")
+        if let shortcut = fullScreenShortcut {
+            fullScreenItem.title = "Capture Full Screen"
+            fullScreenItem.keyEquivalent = shortcut.nsMenuItemKeyEquivalent ?? ""
+            fullScreenItem.keyEquivalentModifierMask = shortcut.modifiers
+        }
         menu.addItem(fullScreenItem)
         
         let regionItem = NSMenuItem(title: "Capture Region", action: #selector(captureRegion), keyEquivalent: "")
+        if let shortcut = regionShortcut {
+            regionItem.title = "Capture Region"
+            regionItem.keyEquivalent = shortcut.nsMenuItemKeyEquivalent ?? ""
+            regionItem.keyEquivalentModifierMask = shortcut.modifiers
+        }
         menu.addItem(regionItem)
         
         menu.addItem(NSMenuItem.separator())
