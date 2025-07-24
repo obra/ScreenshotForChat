@@ -141,7 +141,10 @@ jobs:
         
         # Verify signature
         codesign --verify --verbose "$APP_BUNDLE"
-        spctl --assess --verbose "$APP_BUNDLE"
+        
+        # Check Gatekeeper status (expected to fail before notarization)
+        echo "Checking Gatekeeper status (expected to be rejected before notarization):"
+        spctl --assess --verbose "$APP_BUNDLE" || echo "✓ App rejected as expected - will be resolved by notarization"
         
     - name: Create DMG
       run: |
