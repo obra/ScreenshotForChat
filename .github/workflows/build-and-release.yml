@@ -67,7 +67,7 @@ jobs:
         
     - name: Build Swift package
       run: |
-        swift build --configuration release --arch arm64 --arch x86_64
+        swift build --configuration release --arch arm64
         
     - name: Create app bundle structure (improved)
       run: |
@@ -82,28 +82,22 @@ jobs:
         mkdir -p "$APP_BUNDLE/Contents/Resources"
         
         # Copy executable
-        cp .build/apple/Products/Release/$APP_NAME "$APP_BUNDLE/Contents/MacOS/"
+        cp .build/arm64-apple-macosx/release/$APP_NAME "$APP_BUNDLE/Contents/MacOS/"
         
         # Copy Swift package dependency bundles with correct structure
-        # Resource bundles need minimal Info.plist, not the executable bundle version
-        for arch_dir in .build/*-apple-macosx/release; do
-          if [ -d "$arch_dir" ]; then
-            echo "Copying bundles from architecture directory: $arch_dir"
-            find "$arch_dir" -name "*.bundle" -type d | while read bundle; do
-              bundle_name=$(basename "$bundle")
-              echo "Copying resource bundle: $bundle"
-              # Only copy if we haven't copied this bundle yet (avoid duplicates)
-              if [ ! -d "$APP_BUNDLE/Contents/$bundle_name" ]; then
-                cp -R "$bundle" "$APP_BUNDLE/Contents/"
-                # Fix permissions
-                find "$APP_BUNDLE/Contents/$bundle_name" -type f -exec chmod 644 {} \;
-              else
-                echo "Bundle $bundle_name already copied, skipping"
-              fi
-            done
-            break  # Only need bundles from one architecture
-          fi
-        done
+        ARCH_DIR=".build/arm64-apple-macosx/release"
+        if [ -d "$ARCH_DIR" ]; then
+          echo "Copying bundles from: $ARCH_DIR"
+          find "$ARCH_DIR" -name "*.bundle" -type d | while read bundle; do
+            bundle_name=$(basename "$bundle")
+            echo "Copying resource bundle: $bundle"
+            cp -R "$bundle" "$APP_BUNDLE/Contents/"
+            # Fix permissions
+            find "$APP_BUNDLE/Contents/$bundle_name" -type f -exec chmod 644 {} \;
+          done
+        else
+          echo "Warning: ARM64 build directory not found"
+        fi
         
         # Create Info.plist
         cat > "$APP_BUNDLE/Contents/Info.plist" << 'EOF'
