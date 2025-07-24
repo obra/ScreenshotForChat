@@ -1,6 +1,10 @@
+# Update
+
+(Cunningham's Law)[https://meta.wikimedia.org/wiki/Cunningham%27s_Law] successfully applied! It turns out that on MacOS, Claude Code has a magic key binding on *`Control-V`* that raids the system copy-paste buffer and does the right thing. You probably don't need this tool, but it was a fun afternoon getting it together.
+
 # Screenshot for Chat
 
-A modern macOS screenshot tool designed for copying and pasting images into most apps and the path on disk to a temp file containing the image to tools like Claude Code.
+A quick macOS screenshot tool designed for copying and pasting images into most apps and the path on disk to a temp file containing the image to tools like Claude Code.
 
 Capture windows, full screen, or custom regions with global keyboard shortcuts. The smart clipboard automatically provides both image data and file paths, making it perfect for both visual sharing and AI assistant interactions.
 
