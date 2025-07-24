@@ -84,8 +84,8 @@ jobs:
         # Copy executable
         cp .build/arm64-apple-macosx/release/$APP_NAME "$APP_BUNDLE/Contents/MacOS/"
         
-        # Copy Swift package dependency bundles to Contents and create symlink at root
-        # KeyboardShortcuts looks for bundles at app root but signing requires Contents/
+        # Copy Swift package dependency bundles to Contents/
+        # Bundle.module will find them automatically via the app bundle
         ARCH_DIR=".build/arm64-apple-macosx/release"
         if [ -d "$ARCH_DIR" ]; then
           echo "Copying bundles from: $ARCH_DIR"
@@ -93,9 +93,6 @@ jobs:
             bundle_name=$(basename "$bundle")
             echo "Copying resource bundle to Contents: $bundle"
             cp -R "$bundle" "$APP_BUNDLE/Contents/"
-            # Create symlink at app root for KeyboardShortcuts to find
-            echo "Creating symlink at app root: $bundle_name"
-            ln -sf "Contents/$bundle_name" "$APP_BUNDLE/$bundle_name"
             # Fix permissions
             find "$APP_BUNDLE/Contents/$bundle_name" -type f -exec chmod 644 {} \;
           done
