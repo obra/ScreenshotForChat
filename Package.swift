@@ -8,7 +8,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "2.3.0"),
-        .package(url: "https://github.com/sindresorhus/LaunchAtLogin-Modern", from: "1.0.0")
+        .package(url: "https://github.com/sindresorhus/LaunchAtLogin-Modern", exact: "1.1.0")
     ],
     targets: [
         .executableTarget(
