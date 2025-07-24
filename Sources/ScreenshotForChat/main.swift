@@ -2,30 +2,8 @@
 // ABOUTME: Sets up AppKit-based menubar app instead of SwiftUI for broader compatibility
 
 import AppKit
-import Carbon
-import Foundation
-
-// Override Bundle.module for KeyboardShortcuts to look in Contents/
-extension Foundation.Bundle {
-    static let module: Bundle = {
-        // Try Contents/ first (where we actually put the bundle for signed apps)
-        let contentsPath = Bundle.main.bundleURL.appendingPathComponent("Contents/KeyboardShortcuts_KeyboardShortcuts.bundle").path
-        // Fallback to app root (where KeyboardShortcuts expects it)
-        let mainPath = Bundle.main.bundleURL.appendingPathComponent("KeyboardShortcuts_KeyboardShortcuts.bundle").path
-        // Fallback to build path for development
-        let buildPath = Bundle.main.bundleURL.appendingPathComponent("../../../.build/arm64-apple-macosx/release/KeyboardShortcuts_KeyboardShortcuts.bundle").path
-
-        let preferredBundle = Bundle(path: contentsPath) ?? Bundle(path: mainPath) ?? Bundle(path: buildPath)
-
-        guard let bundle = preferredBundle else {
-            Swift.fatalError("could not load resource bundle: tried \(contentsPath), \(mainPath), and \(buildPath)")
-        }
-
-        return bundle
-    }()
-}
-
 import KeyboardShortcuts
+import Carbon
 
 // Define keyboard shortcut names  
 extension KeyboardShortcuts.Name {
@@ -65,11 +43,30 @@ func checkEarlyResourceAccess() -> Bool {
     }
 }
 
+func createKeyboardShortcutsBundleSymlinkIfNeeded() {
+    let appRoot = Bundle.main.bundlePath
+    let contentsBundle = "\(appRoot)/Contents/KeyboardShortcuts_KeyboardShortcuts.bundle"
+    let rootBundle = "\(appRoot)/KeyboardShortcuts_KeyboardShortcuts.bundle"
+    
+    // If bundle exists in Contents/ but not at root, create symlink
+    if FileManager.default.fileExists(atPath: contentsBundle) && !FileManager.default.fileExists(atPath: rootBundle) {
+        do {
+            try FileManager.default.createSymbolicLink(atPath: rootBundle, withDestinationPath: "Contents/KeyboardShortcuts_KeyboardShortcuts.bundle")
+            print("✅ Created KeyboardShortcuts bundle symlink")
+        } catch {
+            print("⚠️ Failed to create KeyboardShortcuts bundle symlink: \(error)")
+        }
+    }
+}
+
 func main() {
     // Check resource access before doing anything else
     if !checkEarlyResourceAccess() {
         return
     }
+    
+    // Create KeyboardShortcuts bundle symlink before importing the library
+    createKeyboardShortcutsBundleSymlinkIfNeeded()
     
     let app = NSApplication.shared
     let delegate = AppDelegate()
