@@ -1,6 +1,6 @@
 # Update
 
-(https://meta.wikimedia.org/wiki/Cunningham%27s_Law)[Cunningham's Law] successfully applied! It turns out that on MacOS, Claude Code has a magic key binding on *`Control-V`* that raids the system copy-paste buffer and does the right thing. You probably don't need this tool, but it was a fun afternoon getting it together.
+[Cunningham's Law](https://meta.wikimedia.org/wiki/Cunningham%27s_Law) successfully applied! It turns out that on MacOS, Claude Code has a magic key binding on *`Control-V`* that raids the system copy-paste buffer and does the right thing. You probably don't need this tool, but it was a fun afternoon getting it together.
 
 # Screenshot for Chat
 
