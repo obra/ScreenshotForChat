@@ -9,6 +9,7 @@ import Carbon
 extension KeyboardShortcuts.Name {
     static let windowCapture = Self("windowCapture", default: .init(carbonKeyCode: kVK_ANSI_0, carbonModifiers: Int(cmdKey | shiftKey)))
     static let fullScreenCapture = Self("fullScreenCapture", default: .init(carbonKeyCode: kVK_ANSI_9, carbonModifiers: Int(cmdKey | shiftKey)))
+    static let regionCapture = Self("regionCapture", default: .init(carbonKeyCode: kVK_ANSI_8, carbonModifiers: Int(cmdKey | shiftKey)))
 }
 
 func checkEarlyResourceAccess() -> Bool {

@@ -88,6 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Get current shortcuts for display
         let windowShortcut = KeyboardShortcuts.getShortcut(for: .windowCapture)
         let fullScreenShortcut = KeyboardShortcuts.getShortcut(for: .fullScreenCapture)
+        let regionShortcut = KeyboardShortcuts.getShortcut(for: .regionCapture)
         
         let windowItem = NSMenuItem(title: "Capture Window", action: #selector(captureWindow), keyEquivalent: "")
         if let shortcut = windowShortcut {
@@ -105,6 +106,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         menu.addItem(fullScreenItem)
         
+        let regionItem = NSMenuItem(title: "Capture Region", action: #selector(captureRegion), keyEquivalent: "")
+        if let shortcut = regionShortcut {
+            regionItem.title = "Capture Region"
+            regionItem.keyEquivalent = shortcut.nsMenuItemKeyEquivalent ?? ""
+            regionItem.keyEquivalentModifierMask = shortcut.modifiers
+        }
+        menu.addItem(regionItem)
+        
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: ""))
@@ -119,6 +128,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func captureFullScreen() {
         captureManager.captureFullScreen()
+    }
+    
+    @objc private func captureRegion() {
+        captureManager.captureRegion()
     }
     
     @objc private func showSettings() {
@@ -162,6 +175,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         KeyboardShortcuts.onKeyUp(for: .fullScreenCapture) { [weak self] in
             print("📸 Full screen capture triggered")
             self?.captureManager.captureFullScreen()
+        }
+        
+        // Region capture shortcut
+        KeyboardShortcuts.onKeyUp(for: .regionCapture) { [weak self] in
+            print("📱 Region capture triggered")
+            self?.captureManager.captureRegion()
         }
         
         print("⌨️ Keyboard shortcuts registered")

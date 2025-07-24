@@ -140,6 +140,24 @@ struct SettingsView: View {
                                 }
                             }
                             
+                            Divider()
+                                .padding(.horizontal, 12)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Region Capture")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        Text("Drag to select a region of the screen")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    KeyboardShortcuts.Recorder(for: .regionCapture)
+                                }
+                            }
+                            
                             HStack {
                                 Image(systemName: "info.circle")
                                     .foregroundColor(.secondary)

@@ -8,6 +8,7 @@ import UniformTypeIdentifiers
 @available(macOS 14.0, *)
 class CaptureManager: ObservableObject {
     private let settings = AppSettings.shared
+    private var activeOverlay: RegionSelectionOverlay?
     
     func startWindowPicker() {
         print("🎯 Starting window picker...")
@@ -27,6 +28,13 @@ class CaptureManager: ObservableObject {
         print("📸 Starting full screen capture...")
         Task {
             await captureAllScreens()
+        }
+    }
+    
+    func captureRegion() {
+        print("📱 Starting region capture...")
+        Task {
+            await captureSelectedRegion()
         }
     }
     
@@ -236,6 +244,86 @@ class CaptureManager: ObservableObject {
                     }
                 }
             }
+        }
+    }
+    
+    private func captureSelectedRegion() async {
+        print("📱 Starting region selection using ScreenCaptureKit...")
+        
+        // Show region selection overlay and wait for user selection
+        let selectedRegion = await showRegionSelection()
+        
+        guard let region = selectedRegion else {
+            print("ℹ️ Region capture cancelled by user")
+            return
+        }
+        
+        print("📍 Selected region: \(region)")
+        
+        do {
+            // Get available content
+            let availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            
+            guard let primaryDisplay = availableContent.displays.first else {
+                print("❌ No displays found")
+                return
+            }
+            
+            // Create content filter for the display
+            let contentFilter = SCContentFilter(display: primaryDisplay, excludingWindows: [])
+            
+            // Configure stream settings for full display capture
+            let config = SCStreamConfiguration()
+            config.scalesToFit = false
+            config.width = Int(primaryDisplay.width)
+            config.height = Int(primaryDisplay.height)
+            
+            // Capture the full screen first
+            let fullImage = try await SCScreenshotManager.captureImage(contentFilter: contentFilter, configuration: config)
+            
+            // Convert selection coordinates to display coordinates
+            // Note: NSScreen coordinates have origin at bottom-left, CGImage has origin at top-left
+            let displayHeight = CGFloat(primaryDisplay.height)
+            let cropRect = CGRect(
+                x: region.minX,
+                y: displayHeight - region.maxY, // Flip Y coordinate
+                width: region.width,
+                height: region.height
+            )
+            
+            // Crop the image to the selected region
+            guard let croppedImage = fullImage.cropping(to: cropRect) else {
+                print("❌ Failed to crop image to selected region")
+                return
+            }
+            
+            // Save the cropped image
+            let success = await saveImage(croppedImage, prefix: "screenshot-region")
+            if success {
+                print("✅ Region capture complete")
+            }
+            
+        } catch {
+            print("❌ ScreenCaptureKit region capture failed: \(error)")
+            print("💡 Make sure Screen Recording permission is enabled in System Preferences")
+        }
+    }
+    
+    @MainActor
+    private func showRegionSelection() async -> NSRect? {
+        return await withCheckedContinuation { continuation in
+            let overlay = RegionSelectionOverlay { [weak self] selectedRect in
+                defer {
+                    self?.activeOverlay = nil
+                }
+                DispatchQueue.main.async {
+                    continuation.resume(returning: selectedRect)
+                }
+            }
+            
+            // Keep a strong reference to prevent deallocation
+            self.activeOverlay = overlay
+            overlay.startSelection()
         }
     }
 }
