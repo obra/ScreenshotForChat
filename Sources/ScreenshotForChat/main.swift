@@ -2,9 +2,30 @@
 // ABOUTME: Sets up AppKit-based menubar app instead of SwiftUI for broader compatibility
 
 import AppKit
-import KeyboardShortcuts
 import Carbon
 import Foundation
+
+// Override Bundle.module for KeyboardShortcuts to look in Contents/
+extension Foundation.Bundle {
+    static let module: Bundle = {
+        // Try Contents/ first (where we actually put the bundle for signed apps)
+        let contentsPath = Bundle.main.bundleURL.appendingPathComponent("Contents/KeyboardShortcuts_KeyboardShortcuts.bundle").path
+        // Fallback to app root (where KeyboardShortcuts expects it)
+        let mainPath = Bundle.main.bundleURL.appendingPathComponent("KeyboardShortcuts_KeyboardShortcuts.bundle").path
+        // Fallback to build path for development
+        let buildPath = Bundle.main.bundleURL.appendingPathComponent("../../../.build/arm64-apple-macosx/release/KeyboardShortcuts_KeyboardShortcuts.bundle").path
+
+        let preferredBundle = Bundle(path: contentsPath) ?? Bundle(path: mainPath) ?? Bundle(path: buildPath)
+
+        guard let bundle = preferredBundle else {
+            Swift.fatalError("could not load resource bundle: tried \(contentsPath), \(mainPath), and \(buildPath)")
+        }
+
+        return bundle
+    }()
+}
+
+import KeyboardShortcuts
 
 // Define keyboard shortcut names  
 extension KeyboardShortcuts.Name {
