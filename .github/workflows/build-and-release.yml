@@ -213,12 +213,15 @@ jobs:
           
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ScreenshotForChat-*.dmg
-        draft: false
-        prerelease: false
-        generate_release_notes: true
+      run: |
+        VERSION="${{ github.event.inputs.version || github.ref_name }}"
+        DMG_NAME="ScreenshotForChat-${VERSION}.dmg"
+        
+        # Create release using GitHub CLI
+        gh release create "${{ github.ref_name }}" \
+          "$DMG_NAME" \
+          --title "Screenshot for Chat ${{ github.ref_name }}" \
+          --generate-notes
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
