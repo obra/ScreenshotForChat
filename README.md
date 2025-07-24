@@ -1,6 +1,8 @@
 # Screenshot for Chat
 
-A modern macOS screenshot tool with intelligent clipboard integration. Capture windows, full screen, or custom regions with global keyboard shortcuts. The smart clipboard automatically provides both image data and file paths, making it perfect for both visual sharing and AI assistant interactions.
+A modern macOS screenshot tool designed for copying and pasting images into most apps and the path on disk to a temp file containing the image to tools like Claude Code.
+
+Capture windows, full screen, or custom regions with global keyboard shortcuts. The smart clipboard automatically provides both image data and file paths, making it perfect for both visual sharing and AI assistant interactions.
 
 ## Features
 
@@ -8,11 +10,7 @@ A modern macOS screenshot tool with intelligent clipboard integration. Capture w
 - **Full Screen Capture**: Capture entire screen or all displays
 - **Region Capture**: Drag to select any area of the screen
 - **Global Keyboard Shortcuts**: Work from any application (fully customizable)
-- **Visual Feedback**: Flash effects confirm successful captures
 - **Smart Clipboard**: Both image data and file path copied simultaneously
-- **Modern macOS Integration**: Built with ScreenCaptureKit for hardware acceleration
-- **Launch at Login**: Optional automatic startup
-- **HiDPI Support**: Configurable retina display handling
 
 ## Requirements
 
@@ -22,9 +20,8 @@ A modern macOS screenshot tool with intelligent clipboard integration. Capture w
 ## Installation
 
 1. Download the latest release
-2. Move to `/Applications/` folder
 3. Launch and grant Screen Recording permission when prompted
-4. Configure keyboard shortcuts in Settings
+4. Configure keyboard shortcuts in Settings if you want. 
 
 ## Usage
 
@@ -35,15 +32,6 @@ A modern macOS screenshot tool with intelligent clipboard integration. Capture w
 - **Region Capture**: `Cmd+Shift+8` - Drag to select any area of the screen
 
 All shortcuts are fully customizable in Settings.
-
-### Menu Bar
-
-Click the camera icon in the menu bar to access:
-- Capture Window
-- Capture Full Screen
-- Capture Region
-- Settings
-- Quit
 
 ### Settings
 
@@ -96,3 +84,5 @@ MIT License - see LICENSE file for details
 ## Copyright
 
 Copyright 2025 Jesse Vincent <jesse@fsck.com>
+
+Made with love and robots in Berkeley, California
