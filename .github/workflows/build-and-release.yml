@@ -17,6 +17,8 @@ env:
 jobs:
   build:
     runs-on: macos-14
+    permissions:
+      contents: write  # Required for creating releases
     
     steps:
     - name: Checkout code
