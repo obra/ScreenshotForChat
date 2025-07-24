@@ -161,6 +161,14 @@ jobs:
         echo "Signing app bundle..."
         codesign --force --options runtime --sign "$DEVELOPER_ID_NAME" "$APP_BUNDLE"
         
+        # Create symlinks for Bundle.module after signing
+        echo "Creating bundle symlinks for Bundle.module access..."
+        find "$APP_BUNDLE/Contents" -name "*.bundle" -type d | while read bundle; do
+          bundle_name=$(basename "$bundle")
+          echo "Creating symlink: $APP_BUNDLE/$bundle_name -> Contents/$bundle_name"
+          ln -sf "Contents/$bundle_name" "$APP_BUNDLE/$bundle_name"
+        done
+        
         # Verify signature
         echo "Verifying signatures..."
         codesign --verify --verbose=4 "$APP_BUNDLE"
