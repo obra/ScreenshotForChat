@@ -4,6 +4,8 @@ A modern macOS screenshot tool designed for copying and pasting images into most
 
 Capture windows, full screen, or custom regions with global keyboard shortcuts. The smart clipboard automatically provides both image data and file paths, making it perfect for both visual sharing and AI assistant interactions.
 
+Screenshot files are written into an ephemeral temporary directory. They won't be cluttering up your homedir next year. But you also shouldn't depend on them still existing in an hour unless you've pasted them somewhere.
+
 ## Features
 
 - **Window Capture**: Click to select any window for precise screenshots
