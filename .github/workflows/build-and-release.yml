@@ -170,6 +170,8 @@ jobs:
         spctl --assess --verbose "$APP_BUNDLE" || echo "✓ App rejected as expected - will be resolved by notarization"
         
     - name: Fix KeyboardShortcuts bundle location for distribution
+      env:
+        DEVELOPER_ID_NAME: ${{ secrets.DEVELOPER_ID_NAME }}
       run: |
         APP_BUNDLE="ScreenshotForChat.app"
         echo "Moving bundle to expected location for KeyboardShortcuts..."
@@ -178,6 +180,11 @@ jobs:
         if [ -d "$APP_BUNDLE/Contents/KeyboardShortcuts_KeyboardShortcuts.bundle" ]; then
           mv "$APP_BUNDLE/Contents/KeyboardShortcuts_KeyboardShortcuts.bundle" "$APP_BUNDLE/"
           echo "✅ Moved KeyboardShortcuts bundle to app root"
+          
+          # Re-sign the app after moving the bundle
+          echo "Re-signing app after bundle move..."
+          codesign --force --options runtime --sign "$DEVELOPER_ID_NAME" "$APP_BUNDLE"
+          codesign --verify --verbose=4 "$APP_BUNDLE"
         else
           echo "⚠️ KeyboardShortcuts bundle not found in Contents/"
         fi
