@@ -18,7 +18,7 @@ class CaptureManager: ObservableObject {
                 return
             }
             print("📋 Selected window ID: \(windowID)")
-            Task {
+            Task { @MainActor in
                 await self?.captureWindow(windowID: windowID)
             }
         }
@@ -28,7 +28,7 @@ class CaptureManager: ObservableObject {
         print("📸 Starting full screen capture...")
         // Capture the currently focused app to restore later
         let previousApp = NSWorkspace.shared.frontmostApplication
-        Task {
+        Task { @MainActor in
             await captureAllScreens()
             // Restore focus to the previous app
             await restoreFocus(to: previousApp)
@@ -39,7 +39,7 @@ class CaptureManager: ObservableObject {
         print("📱 Starting region capture...")
         // Capture the currently focused app to restore later
         let previousApp = NSWorkspace.shared.frontmostApplication
-        Task {
+        Task { @MainActor in
             await captureSelectedRegion()
             // Restore focus to the previous app
             await restoreFocus(to: previousApp)
@@ -168,7 +168,7 @@ class CaptureManager: ObservableObject {
                     return
                 }
                 
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     print("✅ Screenshot saved to \(tempURL.path)")
                     self?.copyToClipboard(path: tempURL.path)
                     continuation.resume(returning: true)
