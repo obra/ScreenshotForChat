@@ -178,9 +178,19 @@ class CaptureManager: ObservableObject {
     }
     
     private func copyToClipboard(path: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(path, forType: .string)
-        print("📋 Path copied to clipboard")
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        
+        // Always add the file path as string
+        pasteboard.setString(path, forType: .string)
+        
+        // Try to add the actual image data too
+        if let imageData = NSData(contentsOfFile: path) {
+            pasteboard.setData(imageData as Data, forType: .png)
+            print("📋 Image and path copied to clipboard")
+        } else {
+            print("📋 Path copied to clipboard (image data unavailable)")
+        }
     }
     
     @MainActor
