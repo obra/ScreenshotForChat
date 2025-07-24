@@ -4,6 +4,7 @@
 import AppKit
 import KeyboardShortcuts
 import Carbon
+import Foundation
 
 // Define keyboard shortcut names  
 extension KeyboardShortcuts.Name {

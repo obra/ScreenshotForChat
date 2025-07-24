@@ -17,6 +17,7 @@ Screenshot files are written into an ephemeral temporary directory. They won't b
 ## Requirements
 
 - macOS 14.0 or later
+- Apple Silicon Mac (ARM64)
 - Screen Recording permission (granted automatically on first use)
 
 ## Installation
@@ -68,10 +69,10 @@ swift build
 ### Creating App Bundle
 
 ```bash
-swift build
+swift build --configuration release --arch arm64
 mkdir -p ScreenshotForChat.app/Contents/MacOS
-cp .build/debug/ScreenshotForChat ScreenshotForChat.app/Contents/MacOS/
-cp -r .build/debug/KeyboardShortcuts_KeyboardShortcuts.bundle ScreenshotForChat.app/Contents/
+cp .build/arm64-apple-macosx/release/ScreenshotForChat ScreenshotForChat.app/Contents/MacOS/
+cp -r .build/arm64-apple-macosx/release/KeyboardShortcuts_KeyboardShortcuts.bundle ScreenshotForChat.app/Contents/
 # Add Info.plist to Contents/
 ```
 
