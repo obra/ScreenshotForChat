@@ -1,14 +1,15 @@
 # Screenshot for Chat
 
-A modern macOS screenshot tool designed for AI chat interactions. Capture windows or full screen with global keyboard shortcuts and get file paths automatically copied to your clipboard for easy sharing with AI assistants.
+A modern macOS screenshot tool with intelligent clipboard integration. Capture windows, full screen, or custom regions with global keyboard shortcuts. The smart clipboard automatically provides both image data and file paths, making it perfect for both visual sharing and AI assistant interactions.
 
 ## Features
 
 - **Window Capture**: Click to select any window for precise screenshots
 - **Full Screen Capture**: Capture entire screen or all displays
-- **Global Keyboard Shortcuts**: Work from any application
+- **Region Capture**: Drag to select any area of the screen
+- **Global Keyboard Shortcuts**: Work from any application (fully customizable)
 - **Visual Feedback**: Flash effects confirm successful captures
-- **AI-Optimized**: File paths copied to clipboard for easy AI chat sharing
+- **Smart Clipboard**: Both image data and file path copied simultaneously
 - **Modern macOS Integration**: Built with ScreenCaptureKit for hardware acceleration
 - **Launch at Login**: Optional automatic startup
 - **HiDPI Support**: Configurable retina display handling
@@ -27,16 +28,20 @@ A modern macOS screenshot tool designed for AI chat interactions. Capture window
 
 ## Usage
 
-### Keyboard Shortcuts
+### Keyboard Shortcuts (Default)
 
-- **Window Capture**: Select and capture a specific window (customizable)
-- **Full Screen Capture**: Capture the entire screen (customizable)
+- **Window Capture**: `Cmd+Shift+0` - Select and capture a specific window
+- **Full Screen Capture**: `Cmd+Shift+9` - Capture the entire screen
+- **Region Capture**: `Cmd+Shift+8` - Drag to select any area of the screen
+
+All shortcuts are fully customizable in Settings.
 
 ### Menu Bar
 
 Click the camera icon in the menu bar to access:
 - Capture Window
-- Capture Full Screen  
+- Capture Full Screen
+- Capture Region
 - Settings
 - Quit
 
@@ -46,9 +51,21 @@ Click the camera icon in the menu bar to access:
 - Toggle launch at login
 - Adjust HiDPI scaling behavior
 
-## Screenshots
+## Smart Clipboard Integration
 
-Screenshots are automatically saved to your temporary directory and the file path is copied to your clipboard. Perfect for sharing with AI assistants by simply pasting the path.
+Screenshots are automatically saved to your temporary directory with intelligent clipboard handling:
+
+### Dual Clipboard Content
+- **Image Data**: Direct image for apps like Photoshop, Slack, Discord, Messages
+- **File Path**: Text path for terminals, code editors, AI chats, file managers
+
+### How It Works
+When you paste after taking a screenshot:
+- **Image-capable apps** automatically receive the screenshot image
+- **Text-based apps** automatically receive the file path string
+- No manual switching needed - apps choose the format they prefer
+
+Perfect for both visual sharing and AI assistant interactions!
 
 ## Building from Source
 
