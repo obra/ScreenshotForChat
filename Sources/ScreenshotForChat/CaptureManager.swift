@@ -26,15 +26,23 @@ class CaptureManager: ObservableObject {
     
     func captureFullScreen() {
         print("📸 Starting full screen capture...")
+        // Capture the currently focused app to restore later
+        let previousApp = NSWorkspace.shared.frontmostApplication
         Task {
             await captureAllScreens()
+            // Restore focus to the previous app
+            await restoreFocus(to: previousApp)
         }
     }
     
     func captureRegion() {
         print("📱 Starting region capture...")
+        // Capture the currently focused app to restore later
+        let previousApp = NSWorkspace.shared.frontmostApplication
         Task {
             await captureSelectedRegion()
+            // Restore focus to the previous app
+            await restoreFocus(to: previousApp)
         }
     }
     
@@ -325,5 +333,21 @@ class CaptureManager: ObservableObject {
             self.activeOverlay = overlay
             overlay.startSelection()
         }
+    }
+    
+    @MainActor
+    private func restoreFocus(to app: NSRunningApplication?) async {
+        guard let app = app, 
+              app != NSRunningApplication.current,
+              app.bundleIdentifier != "com.fsck.screenshotforchat" else {
+            return
+        }
+        
+        // Small delay to let the capture complete and UI settle
+        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        
+        // Restore focus to the previous app
+        app.activate(options: [])
+        print("🔄 Restored focus to \(app.localizedName ?? "unknown app")")
     }
 }
