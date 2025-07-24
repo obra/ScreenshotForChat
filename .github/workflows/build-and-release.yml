@@ -81,6 +81,9 @@ jobs:
         # Copy executable
         cp .build/apple/Products/Release/$APP_NAME "$APP_BUNDLE/Contents/MacOS/"
         
+        # Copy Swift package dependency bundles (required for KeyboardShortcuts)
+        find .build -name "*.bundle" -type d -exec cp -R {} "$APP_BUNDLE/Contents/" \;
+        
         # Copy Info.plist (create from template if doesn't exist)
         if [ -f "Info.plist" ]; then
           cp Info.plist "$APP_BUNDLE/Contents/"
