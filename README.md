@@ -47,13 +47,13 @@ Screenshots are automatically saved to your temporary directory with intelligent
 
 ### Dual Clipboard Content
 - **Image Data**: Direct image for apps like Photoshop, Slack, Discord, Messages
-- **File Path**: Text path for terminals, code editors, AI chats, file managers
+- **File Path**: Text path perfect for sharing with your AI coding buddy that expected you to drag and drop a screenshot into your terminal
 
 ### How It Works
 When you paste after taking a screenshot:
 - **Image-capable apps** automatically receive the screenshot image
 - **Text-based apps** automatically receive the file path string
-- No manual switching needed - apps choose the format they prefer
+- No manual copy paste needed - apps choose the format they prefer
 
 Perfect for both visual sharing and AI assistant interactions!
 
