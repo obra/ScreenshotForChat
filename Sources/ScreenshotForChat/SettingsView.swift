@@ -13,14 +13,22 @@ struct SettingsView: View {
             // Header
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
-                    HStack(spacing: 2) {
-                        Image(systemName: "camera.viewfinder")
-                            .foregroundColor(.accentColor)
-                            .font(.title)
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.yellow)
-                            .font(.footnote)
-                            .offset(x: -6, y: -6)
+                    // App icon from bundle
+                    if let appIcon = loadAppIcon() {
+                        Image(nsImage: appIcon)
+                            .resizable()
+                            .frame(width: 32, height: 32)
+                    } else {
+                        // Fallback to system icons
+                        HStack(spacing: 2) {
+                            Image(systemName: "camera.viewfinder")
+                                .foregroundColor(.accentColor)
+                                .font(.title)
+                            Image(systemName: "sparkles")
+                                .foregroundColor(.yellow)
+                                .font(.footnote)
+                                .offset(x: -6, y: -6)
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
@@ -169,6 +177,21 @@ struct SettingsView: View {
             .padding(.vertical, 16)
         }
         .frame(width: 520, height: 548)
+    }
+    
+    private func loadAppIcon() -> NSImage? {
+        // Try to load the app icon from the bundle
+        if let appIcon = NSApp.applicationIconImage {
+            return appIcon
+        }
+        
+        // Fallback: try to load directly from resources
+        guard let resourcePath = Bundle.main.resourcePath else {
+            return nil
+        }
+        
+        let iconPath = "\(resourcePath)/ScreenshotForChat.icns"
+        return NSImage(contentsOfFile: iconPath)
     }
 }
 

@@ -249,6 +249,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 alert.messageText = "App Location Warning"
                 alert.informativeText = "Screenshot for Chat is running from \(restrictedPath.components(separatedBy: "/").last ?? "a restricted folder"). For best performance and to avoid permission issues, the app should be moved to /Applications/."
                 alert.alertStyle = .warning
+                
+                
                 alert.addButton(withTitle: "Move to Applications")
                 alert.addButton(withTitle: "Quit")
                 
@@ -486,5 +488,54 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "Got It!")
         
         alert.runModal()
+    }
+    
+    private func loadCustomAlertIcon() -> NSImage? {
+        // Load PNG directly and create NSImage with explicit alpha handling
+        guard let resourcePath = Bundle.main.resourcePath else {
+            print("⚠️ Could not get resource path")
+            return nil
+        }
+        
+        // Try loading PNG directly from iconset folder
+        let pngPath = "\(resourcePath)/../../../Resources/ScreenshotForChat.iconset/icon_256x256.png"
+        print("🎨 Trying to load PNG directly from: \(pngPath)")
+        
+        if FileManager.default.fileExists(atPath: pngPath),
+           let imageData = NSData(contentsOfFile: pngPath) {
+            
+            // Create NSImage from data to better preserve alpha
+            let image = NSImage(data: imageData as Data)
+            
+            if let nsImage = image {
+                print("✅ Successfully loaded PNG with data method")
+                
+                // Create new image with explicit alpha support
+                let targetSize = NSSize(width: 64, height: 64)
+                let newImage = NSImage(size: targetSize)
+                
+                newImage.lockFocus()
+                
+                // Set up graphics context for proper alpha blending
+                if let context = NSGraphicsContext.current?.cgContext {
+                    context.setBlendMode(.normal)
+                    context.setShouldAntialias(true)
+                    context.setAllowsAntialiasing(true)
+                }
+                
+                // Draw with source-over to preserve transparency
+                nsImage.draw(in: NSRect(origin: .zero, size: targetSize),
+                           from: NSRect(origin: .zero, size: nsImage.size),
+                           operation: .sourceOver,
+                           fraction: 1.0)
+                
+                newImage.unlockFocus()
+                
+                return newImage
+            }
+        }
+        
+        print("❌ Could not load PNG with transparency")
+        return nil
     }
 }

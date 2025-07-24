@@ -7,9 +7,9 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "🎨 Setting up icons for $APP_NAME..."
 
-# Check if source images exist
-APP_ICON_SOURCE="$HOME/Downloads/app-icon.png"
-MENUBAR_ICON_SOURCE="$HOME/Downloads/menubar.png"
+# Check if source images exist in Resources (canonical location)
+APP_ICON_SOURCE="$PROJECT_DIR/Resources/app-icon-source.png"
+MENUBAR_ICON_SOURCE="$PROJECT_DIR/Resources/menubar-source.png"
 
 if [ ! -f "$APP_ICON_SOURCE" ]; then
     echo "❌ App icon not found at $APP_ICON_SOURCE"
@@ -34,16 +34,16 @@ echo "📱 Generating app icon sizes..."
 # Prepare .iconset folder for app icon
 mkdir "$PROJECT_DIR/Resources/$APP_NAME.iconset"
 
-# Generate all required app icon sizes
-sips -z 16 16     "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_16x16.png"
-sips -z 32 32     "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_16x16@2x.png"
-sips -z 32 32     "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_32x32.png"
-sips -z 64 64     "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_32x32@2x.png"
-sips -z 128 128   "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_128x128.png"
-sips -z 256 256   "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_128x128@2x.png"
-sips -z 256 256   "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_256x256.png"
-sips -z 512 512   "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_256x256@2x.png"
-sips -z 512 512   "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_512x512.png"
+# Generate all required app icon sizes with transparency preserved
+sips -z 16 16 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_16x16.png"
+sips -z 32 32 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_16x16@2x.png"
+sips -z 32 32 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_32x32.png"
+sips -z 64 64 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_32x32@2x.png"
+sips -z 128 128 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_128x128.png"
+sips -z 256 256 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_128x128@2x.png"
+sips -z 256 256 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_256x256.png"
+sips -z 512 512 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_256x256@2x.png"
+sips -z 512 512 -s format png -s formatOptions 100 "$APP_ICON_SOURCE" --out "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_512x512.png"
 cp "$APP_ICON_SOURCE" "$PROJECT_DIR/Resources/$APP_NAME.iconset/icon_512x512@2x.png"
 
 # Generate the .icns file
@@ -73,9 +73,9 @@ cp "$PROJECT_DIR/Resources/MenuBar.iconset/menubar_16x16@2x.png" "$PROJECT_DIR/R
 cp "$PROJECT_DIR/Resources/MenuBar.iconset/menubar_32x32.png" "$PROJECT_DIR/Resources/"
 cp "$PROJECT_DIR/Resources/MenuBar.iconset/menubar_32x32@2x.png" "$PROJECT_DIR/Resources/"
 
-echo "📋 Copying source images to Resources..."
-cp "$APP_ICON_SOURCE" "$PROJECT_DIR/Resources/app-icon-source.png"
-cp "$MENUBAR_ICON_SOURCE" "$PROJECT_DIR/Resources/menubar-source.png"
+echo "📋 Using source images from Resources..."
+echo "   App icon: $APP_ICON_SOURCE"
+echo "   Menubar icon: $MENUBAR_ICON_SOURCE"
 
 echo "✅ Icon setup complete!"
 echo "📱 App icon: $PROJECT_DIR/Resources/$APP_NAME.icns"
